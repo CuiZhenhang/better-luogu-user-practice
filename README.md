@@ -2,7 +2,7 @@
 
 由 [CuiZhenhang](https://www.luogu.com.cn/user/561644) 制作的**油猴插件**，有较优的性能和较少 bug。
 
-性能情况：对于题目数超过 $4000$ 的 [Alex\_Wei](https://www.luogu.com.cn/user/123294) 的练习情况，该插件平均只需约 100ms 即可完成工作；每秒只需约 6ms 用于检查网页。  
+性能情况：对于题目数超过 $4000$ 的 [Alex\_Wei](https://www.luogu.com.cn/user/123294) 的练习情况，该插件平均只需约 100ms 即可完成工作；每秒只需约 2ms 用于检查网页。  
 **该插件运行耗时与题目数几乎成线性关系。**
 
 ## 功能速览

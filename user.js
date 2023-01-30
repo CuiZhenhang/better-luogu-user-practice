@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  功能：显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
 // @author       CuiZhenhang
 // @match        https://www.luogu.com.cn/*
@@ -80,6 +80,9 @@
     function sortProblems () {
         if (window.location.hash !== '#practice') return
         for (let elDiv of document.querySelectorAll('div.problems')) {
+            let sortedCode = window.__betterLuoguUserPractice_sortByDifficulty ? 1 : 2
+            if (elDiv.__betterLuoguUserPractice_sortedCode === sortedCode) continue
+            elDiv.__betterLuoguUserPractice_sortedCode = sortedCode
             let childNodes = elDiv.childNodes
             let sorted = true
             for (let i = 1; i < childNodes.length; ++i) {
