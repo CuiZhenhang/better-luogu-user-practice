@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.1
 // @description  功能：显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
 // @author       CuiZhenhang
 // @match        https://www.luogu.com.cn/*
@@ -23,35 +23,43 @@
     ]
     let pathname = ''
     let problems = {}
+    let partRendered = false
 
     function updateProblems () {
         if (window.location.pathname === pathname) return false
         if (!window.location.pathname.endsWith(window._feInstance?.currentData?.user?.uid)) return true
         pathname = window.location.pathname
+        problems = {}
         for (let passed of window._feInstance.currentData.passedProblems) problems[passed.pid] = { dif: passed.difficulty, rendered: false }
         for (let tryed of window._feInstance.currentData.submittedProblems) problems[tryed.pid] = { dif: tryed.difficulty, rendered: false }
         return false
     }
 
-    function setColor () {
+    function renderColor () {
         if (window.location.hash !== '#practice') {
-            for (let pid in problems) {
-                problems[pid].rendered = false
+            if (partRendered) {
+                for (let pid in problems) {
+                    problems[pid].rendered = false
+                }
+                partRendered = false
             }
             return
         }
-        let allRendered = true
-        for (let pid in problems) {
-            if (!problems[pid].rendered) {
-                allRendered = false
-                break
+        if (partRendered) {
+            let rendered = true
+            for (let pid in problems) {
+                if (!problems[pid].rendered) {
+                    rendered = false
+                    break
+                }
             }
+            if (rendered) return
         }
-        if (allRendered) return
         for (let el of document.querySelectorAll('div.problems a')) {
             let pid = el.textContent
             if (problems[pid].rendered) continue
             problems[pid].rendered = true
+            partRendered = true
             el.style.color = colors[problems[pid].dif];
         }
     }
@@ -90,11 +98,14 @@
     }
 
     function main () {
-        if (window.location.pathname.startsWith('/user/')) {
-            if (!updateProblems()) {
-                setColor()
-                sortProblems()
+        if (window.location.pathname.startsWith('/user/') && !updateProblems()) {
+            renderColor()
+            sortProblems()
+        } else if (partRendered) {
+            for (let pid in problems) {
+                problems[pid].rendered = false
             }
+            partRendered = false
         }
         if (window.location.pathname.startsWith('/user/') && window.location.hash === '#practice') {
             let uid = window._feInstance?.currentData?.user?.uid
