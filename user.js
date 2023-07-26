@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况
 // @namespace    http://tampermonkey.net/
-// @version      1.0.2
-// @description  功能：显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
+// @version      1.1.0
+// @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
 // @author       CuiZhenhang
+// @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
 // @match        https://www.luogu.com.cn/*
 // @icon         https://www.luogu.com.cn/favicon.ico
 // @grant        none
@@ -64,6 +65,52 @@
         }
     }
 
+    function renderChart () {
+        if (window.location.hash !== '#practice') return
+        let elDivList = document.querySelectorAll('div.difficulty-tags > div')
+        let maxCount = 0
+        let widthPerCount = Infinity
+        for (let elDiv of elDivList) {
+            let elText = elDiv.querySelector('span.problem-count')
+            let count = Number((/\d+/.exec(elText?.textContent || '') || [])[0])
+            if (count > maxCount) maxCount = count
+            let elCaption = elDiv.querySelector('span.lfe-caption')
+            let width = (elDiv?.offsetWidth - elCaption?.offsetWidth) * 0.8
+            widthPerCount = Math.min(widthPerCount, width / count)
+        }
+        maxCount = Math.ceil((maxCount + 1) / 100) * 100
+        if (widthPerCount < 0) widthPerCount = 0
+        for (let elDiv of elDivList) {
+            let elText = elDiv.querySelector('span.problem-count')
+            if (!elText) continue
+            let count = Number((/\d+/.exec(elText?.textContent || '') || [])[0])
+            let width = Math.round(widthPerCount * count)
+            if (elDiv.__betterLuoguUserPractice_width === width) continue
+            elDiv.__betterLuoguUserPractice_width = width
+            let elChart = elDiv.querySelector('div.__blup_chart')
+            if (!elChart) {
+                elChart = document.createElement('div')
+                elChart.classList.add('__blup_chart')
+                elChart.style.backgroundColor = elDiv.querySelector('span.lfe-caption')?.style?.backgroundColor
+                elChart.style.position = 'absolute'
+                elChart.style.right = '0'
+                elChart.style.height = '50%'
+                elText.style.zIndex = '1'
+                elText.style.textShadow = '#ffffffc0 1px 0 0, #ffffffc0 0 1px 0, #ffffffc0 -1px 0 0, #ffffffc0 0 -1px 0'
+                elDiv.style.position = 'relative'
+                elDiv.appendChild(elChart)
+            }
+            let halfHeight = elChart.clientHeight / 2
+            elChart.style.width = `${ width }px`
+            elChart.style.borderTopLeftRadius = `${ halfHeight }px`
+            elChart.style.borderBottomLeftRadius = `${ halfHeight }px`
+        }
+    }
+
+    window.addEventListener('resize', function () {
+        renderChart()
+    })
+
     window.__betterLuoguUserPractice_sortByDifficulty = true
 
     function sortProblemsCompare (elA, elB) {
@@ -103,6 +150,7 @@
     function main () {
         if (window.location.pathname.startsWith('/user/') && !updateProblems()) {
             renderColor()
+            renderChart()
             sortProblems()
         } else if (partRendered) {
             for (let pid in problems) {
