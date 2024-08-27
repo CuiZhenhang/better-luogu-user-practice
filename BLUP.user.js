@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
-// @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
+// @version      1.2.0
+// @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；查看用户个人介绍；另外，全局变量 window.__betterLuoguUserPractice_costTime 反映了本插件运行时间，将 window.__betterLuoguUserPractice_sortByDifficulty 设置为 false 可临时取消按难度排序。
 // @author       CuiZhenhang
 // @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
 // @match        https://www.luogu.com.cn/*
+// @match        https://www.luogu.com/*
 // @icon         https://www.luogu.com.cn/favicon.ico
 // @grant        none
 // ==/UserScript==
@@ -158,13 +159,23 @@
             }
             partRendered = false
         }
+        if (window.location.pathname.startsWith('/user/')) {
+            for (let el of document.querySelectorAll('.introduction')) {
+                if (el?.style?.display === 'none') {
+                    if (el.previousElementSibling?.textContent?.includes('暂不可见')) {
+                        el.previousElementSibling.style.textDecoration = 'line-through'
+                    }
+                    el.style.display = ''
+                }
+            }
+        }
         if (window.location.pathname.startsWith('/user/') && window.location.hash === '#practice') {
             let uid = window._feInstance?.currentData?.user?.uid
             if (typeof uid === 'number') {
                 for (let elH3 of document.querySelectorAll('h3')) {
                     if (elH3.textContent.includes('尝试过的题目')) {
                         let el = elH3.querySelector('a')
-                        let href = `/record/list?user=${ uid }`
+                        let href = `https://www.luogu.com.cn/record/list?user=${ uid }`
                         if (el === null) {
                             el = document.createElement('a')
                             el.href = href
@@ -217,5 +228,5 @@
         costTime.latest = cost
         costTime.total += cost
         if (cost > costTime.max) costTime.max = cost
-    }, 1000)
+    }, 500)
 })();
