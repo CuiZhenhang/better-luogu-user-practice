@@ -22,4 +22,5 @@
 
 ## 使用方法
 
-打开 [BLUP.user.js](BLUP.user.js) 文件，然后将内容复制进油猴即可。
+- 打开 [BLUP.user.js](BLUP.user.js) 文件，然后将内容复制进油猴即可。
+- 或者，在安装油猴后，直接打开[来自 jsDelivr 的链接](https://cdn.jsdelivr.net/gh/CuiZhenhang/better-luogu-user-practice/BLUP.user.js)。
