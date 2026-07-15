@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况 v2
 // @namespace    http://tampermonkey.net/
-// @version      2.0.0 alpha
+// @version      2.1.0 alpha
 // @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；
 // @author       CuiZhenhang
 // @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
@@ -58,6 +58,17 @@
     const REGEXP_FIND_URL_PRACTICE = /\/user\/\d+.+practice$/
 
     const colors = [
+        'rgb(191, 191, 191)',
+        'rgb(254, 76, 97)',
+        'rgb(243, 156, 17)',
+        'rgb(255, 193, 22)',
+        'rgb(82, 196, 26)',
+        'rgb(19, 194, 194)',
+        'rgb(52, 152, 219)',
+        'rgb(157, 61, 207)',
+        'rgb(14, 29, 105)'
+    ]
+    const colorsOld = [
         'rgb(191, 191, 191)',
         'rgb(254, 76, 97)',
         'rgb(243, 156, 17)',
@@ -300,6 +311,8 @@
             }
         }
         if (window.location.pathname.startsWith('/record/list')) {
+            // 洛谷在该页面，难度为：0,1,2,3,4,5,6,6,7
+            // 两个难度6无法区分，洛谷的锅
             let records = window._feInstance?.currentData?.records?.result
             if (Array.isArray(records)) {
                 let elList = Array.from(document.querySelectorAll('span.pid')).map((el) => el.parentNode)
@@ -307,14 +320,16 @@
                     let dif = records[index]?.problem?.difficulty
                     if (typeof dif !== 'number') continue
                     let el = elList[index]
-                    if (el.style.color !== colors[dif]) el.style.color = colors[dif]
+                    if (el.style.color !== colorsOld[dif]) el.style.color = colorsOld[dif]
                 }
             }
         }
         if (window.location.pathname.match(/\/record\/\d+/)) {
+            // 洛谷在该页面，难度为：0,1,2,3,4,5,6,6,7
+            // 两个难度6无法区分，洛谷的锅
             let dif = window._feInstance?.currentData?.record?.problem?.difficulty
             if (typeof dif === 'number') {
-                let color = colors[dif]
+                let color = colorsOld[dif]
                 for (let elSpan of document.querySelectorAll('span.pid')) {
                     let el = elSpan.parentNode
                     if (el.style.color !== color) el.style.color = color
