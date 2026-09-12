@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况 v2
 // @namespace    http://tampermonkey.net/
-// @version      2.1.0 alpha
+// @version      2.2.1
 // @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；
-// @author       CuiZhenhang
+// @author       CuiZhenhang & EricWan (with ChatGPT-5.6-Sol)
 // @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
 // @match        https://www.luogu.com.cn/*
 // @match        https://www.luogu.com/*
@@ -90,6 +90,33 @@
     let problems = {}
     let partRendered = false
 
+    // v2.2.0:
+    // Cache parsed #lentille-context.
+    // Parsing JSON is local only and does NOT produce any network request.
+    let lentilleContextText = null
+    let lentilleContextData = null
+
+    function getLentilleContextData () {
+        const el = document.querySelector('script#lentille-context')
+        if (!el) return null
+
+        const text = el.textContent || ''
+
+        if (text === lentilleContextText) return lentilleContextData
+
+        try {
+            const context = JSON.parse(text)
+
+            lentilleContextText = text
+            lentilleContextData = context?.data || null
+
+            return lentilleContextData
+        } catch (err) {
+            console.error('Better Luogu User Practice: fail to parse lentille context', err)
+            return null
+        }
+    }
+
     function getEditableProblemRecord (pid) {
         if (!(pid in problems)) return { dif: 0, rendered: true }
         return problems[pid]
@@ -136,7 +163,9 @@
         return null
     }
 
-    // `_feInstance` is deprecated and removed currently, so we need to fetch data manually.
+    // `_feInstance` is deprecated and removed currently,
+    // so we need to fetch data manually.
+    //
     // returns true if something wrong and we should skip rendering
     async function updateProblems () {
         if (window.location.pathname === prev_pathname) return false
@@ -226,7 +255,7 @@
     }
 
     window.addEventListener('resize', function () {
-        renderChart()
+            renderChart()
     })
 
     window.__betterLuoguUserPractice_sortByDifficulty = true
@@ -311,28 +340,141 @@
             }
         }
         if (window.location.pathname.startsWith('/record/list')) {
-            // 洛谷在该页面，难度为：0,1,2,3,4,5,6,6,7
-            // 两个难度6无法区分，洛谷的锅
+            /*
+             * v2.2.0
+             *
+             * 新版评测记录页不再提供旧的
+             * span.pid / _feInstance 结构。
+             *
+             * 难度仍然由页面首屏数据提供，
+             * 位于：
+             *
+             * #lentille-context
+             *   -> data
+             *   -> records
+             *   -> result
+             *
+             * 新版 difficulty 已恢复为完整的
+             * 0..8，因此使用 colors 而不是
+             * colorsOld。
+             *
+             * 此处没有任何网络请求。
+             */
+
             let records = window._feInstance?.currentData?.records?.result
+
+            if (!Array.isArray(records)) {
+                records = getLentilleContextData()?.records?.result
+            }
+
             if (Array.isArray(records)) {
-                let elList = Array.from(document.querySelectorAll('span.pid')).map((el) => el.parentNode)
-                for (let index = 0; index < elList.length; ++index) {
-                    let dif = records[index]?.problem?.difficulty
+                /*
+                 * 不依赖 DOM 顺序，
+                 * 建立 PID -> difficulty 映射。
+                 *
+                 * 同一道题出现多次提交也没有问题。
+                 */
+                const difficultyByPid = new Map()
+
+                for (const record of records) {
+                    const pid = record?.problem?.pid
+                    const dif = record?.problem?.difficulty
+
+                    if (typeof pid === 'string' && typeof dif === 'number') {
+                        difficultyByPid.set(pid, dif)
+                    }
+                }
+
+                /*
+                 * 新版结构：
+                 *
+                 * <div class="problem">
+                 *   <a href="/problem/P10438">
+                 *     <strong>P10438</strong>
+                 *     [JOIST 2024] 塔楼 / Tower
+                 *   </a>
+                 * </div>
+                 *
+                 * 将颜色设置在整个 a 上，
+                 * 因此题号和题名都会染色。
+                 */
+                for (const el of document.querySelectorAll('div.problem > a[href^="/problem/"]')) {
+                    const href = el.getAttribute('href') || ''
+
+                    const pid = decodeURIComponent(href).match(/^\/problem\/([^/?#]+)/)?.[1]
+                    if (!pid) continue
+
+                    const dif = difficultyByPid.get(pid)
+
                     if (typeof dif !== 'number') continue
-                    let el = elList[index]
-                    if (el.style.color !== colorsOld[dif]) el.style.color = colorsOld[dif]
+
+                    const color = colors[dif]
+                    if (typeof color !== 'string') continue
+                    if (el.style.color !== color) el.style.color = color
                 }
             }
         }
         if (window.location.pathname.match(/\/record\/\d+/)) {
-            // 洛谷在该页面，难度为：0,1,2,3,4,5,6,6,7
-            // 两个难度6无法区分，洛谷的锅
-            let dif = window._feInstance?.currentData?.record?.problem?.difficulty
+            /*
+             * v2.2.1
+             *
+             * 新版单条评测记录页与 record/list
+             * 一样，不再提供旧的 span.pid / _feInstance
+             * 结构。首屏数据位于：
+             *
+             * #lentille-context
+             *   -> data
+             *   -> record
+             *   -> problem
+             *
+             * 新版右侧“所属题目”结构为：
+             *
+             * <span class="problem-row">
+             *   <a href="/problem/P7371">
+             *     <strong>P7371</strong>
+             *     [COCI 2018/2019 #4] Kisik
+             *   </a>
+             * </span>
+             *
+             * 将颜色设置到整个 a 上，题号和题名
+             * 会以与新版 record/list 相同的方式染色。
+             *
+             * 同时保留旧 span.pid 页面兼容逻辑。
+             */
+
+            let record = window._feInstance?.currentData?.record
+
+            if (!record || typeof record?.problem?.difficulty !== 'number') {
+                record = getLentilleContextData()?.record
+            }
+
+            const pid = record?.problem?.pid
+            const dif = record?.problem?.difficulty
+
+            if (typeof pid === 'string' && typeof dif === 'number') {
+                const color = colors[dif]
+                if (typeof color === 'string') {
+                    for (const el of document.querySelectorAll('span.problem-row > a[href^="/problem/"]')) {
+                        const href = el.getAttribute('href') || ''
+
+                        const elPid = decodeURIComponent(href).match(/^\/problem\/([^/?#]+)/)?.[1]
+                        if (elPid !== pid) continue
+                        if (el.style.color !== color) el.style.color = color
+                    }
+                }
+            }
+
+            // 旧页面兼容：
+            // 难度为 0,1,2,3,4,5,6,6,7，
+            // 两个难度6无法区分。
             if (typeof dif === 'number') {
-                let color = colorsOld[dif]
-                for (let elSpan of document.querySelectorAll('span.pid')) {
-                    let el = elSpan.parentNode
-                    if (el.style.color !== color) el.style.color = color
+                const oldColor = colorsOld[dif]
+
+                if (typeof oldColor === 'string') {
+                    for (const elSpan of document.querySelectorAll('span.pid')) {
+                        const el = elSpan.parentNode
+                        if (el && el.style.color !== oldColor) el.style.color = oldColor
+                    }
                 }
             }
         }
