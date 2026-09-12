@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      2.2.0
 // @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；
-// @author       CuiZhenHang & ChatGPT 5.6 Sol
+// @author       CuiZhenHang & ChatGPT-5.6-Sol
 // @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
 // @match        https://www.luogu.com.cn/*
 // @match        https://www.luogu.com/*
