@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         更好的洛谷用户练习情况
 // @namespace    http://tampermonkey.net/
-// @version      2.2.0
+// @version      2.2.1
 // @description  功能：显示难易度统计条形图；显示题目难度；按题目难度和编号排序；快捷查看用户评测记录；
 // @author       CuiZhenHang & ChatGPT-5.6-Sol
 // @homepage     https://github.com/CuiZhenhang/better-luogu-user-practice
@@ -831,45 +831,131 @@
             )
         ) {
             /*
-             * 2.1.0 原逻辑暂时保留。
+             * v2.2.1
              *
-             * 用户本次提供的是 record/list
-             * 的新版 HTML，而不是单条 record
-             * 页面，因此不猜测单条记录页的新 DOM。
+             * 新版单条评测记录页与 record/list
+             * 一样，不再提供旧的 span.pid / _feInstance
+             * 结构。首屏数据位于：
+             *
+             * #lentille-context
+             *   -> data
+             *   -> record
+             *   -> problem
+             *
+             * 新版右侧“所属题目”结构为：
+             *
+             * <span class="problem-row">
+             *   <a href="/problem/P7371">
+             *     <strong>P7371</strong>
+             *     [COCI 2018/2019 #4] Kisik
+             *   </a>
+             * </span>
+             *
+             * 将颜色设置到整个 a 上，题号和题名
+             * 会以与新版 record/list 相同的方式染色。
+             *
+             * 同时保留旧 span.pid 页面兼容逻辑。
              */
 
-            // 洛谷在旧页面，难度为：
-            // 0,1,2,3,4,5,6,6,7
-            // 两个难度6无法区分，洛谷的锅
-            let dif =
+            let record =
                 window
                     ._feInstance
                     ?.currentData
                     ?.record
+
+            if (
+                !record ||
+                typeof record
+                    ?.problem
+                    ?.difficulty !== 'number'
+            ) {
+                record =
+                    getLentilleContextData()
+                        ?.record
+            }
+
+            const pid =
+                record
+                    ?.problem
+                    ?.pid
+
+            const dif =
+                record
                     ?.problem
                     ?.difficulty
 
             if (
+                typeof pid === 'string' &&
                 typeof dif === 'number'
             ) {
-                let color =
+                const color =
+                    colors[dif]
+
+                if (
+                    typeof color === 'string'
+                ) {
+                    for (
+                        const el of
+                        document.querySelectorAll(
+                            'span.problem-row > ' +
+                            'a[href^="/problem/"]'
+                        )
+                    ) {
+                        const href =
+                            el.getAttribute(
+                                'href'
+                            ) || ''
+
+                        const elPid =
+                            decodeURIComponent(
+                                href
+                            ).match(
+                                /^\/problem\/([^/?#]+)/
+                            )?.[1]
+
+                        if (elPid !== pid)
+                            continue
+
+                        if (
+                            el.style.color !==
+                            color
+                        ) {
+                            el.style.color =
+                                color
+                        }
+                    }
+                }
+            }
+
+            // 旧页面兼容：
+            // 难度为 0,1,2,3,4,5,6,6,7，
+            // 两个难度6无法区分。
+            if (
+                typeof dif === 'number'
+            ) {
+                const oldColor =
                     colorsOld[dif]
 
-                for (
-                    let elSpan of
-                    document.querySelectorAll(
-                        'span.pid'
-                    )
+                if (
+                    typeof oldColor === 'string'
                 ) {
-                    let el =
-                        elSpan.parentNode
-
-                    if (
-                        el.style.color !==
-                        color
+                    for (
+                        const elSpan of
+                        document.querySelectorAll(
+                            'span.pid'
+                        )
                     ) {
-                        el.style.color =
-                            color
+                        const el =
+                            elSpan.parentNode
+
+                        if (
+                            el &&
+                            el.style.color !==
+                                oldColor
+                        ) {
+                            el.style.color =
+                                oldColor
+                        }
                     }
                 }
             }
